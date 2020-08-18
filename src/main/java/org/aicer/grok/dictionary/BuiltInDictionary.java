@@ -18,7 +18,7 @@ package org.aicer.grok.dictionary;
 /**
  * An Enum representing built-in dictionaries in the library
  *
- * @author Israel Ekpo <israel@aicer.org>
+ * @author <a href="mailto:israel@aicer.org">Israel Ekpo</a>
  *
  */
 public enum BuiltInDictionary {

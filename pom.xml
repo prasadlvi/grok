@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.aicer.grok</groupId>
   <artifactId>grok</artifactId>
-  <version>0.9.1-SNAPSHOT</version>
+  <version>0.9.1-SNAPSHOT-PATCHED</version>
   <packaging>jar</packaging>
   <name>Grok Data Extractor</name>
   <description>A Java library for extracting structured data from unstructured data</description>
@@ -46,7 +46,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>r03</version>
+      <version>28.2-jre</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -58,10 +58,52 @@
       <artifactId>slf4j-log4j12</artifactId>
       <version>1.6.1</version>
     </dependency>
-    <dependency>
-      <groupId>com.github.tony19</groupId>
-      <artifactId>named-regexp</artifactId>
-      <version>${named.regex.version}</version>
-    </dependency>
   </dependencies>
+  <build>
+  <sourceDirectory>src/main/java</sourceDirectory>
+  <plugins>
+  <plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.8.1</version>
+    <configuration>
+      <source>1.8</source>
+      <target>1.8</target>
+    </configuration>
+  </plugin>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-source-plugin</artifactId>
+      <version>3.2.1</version>
+      <configuration>
+        <attach>true</attach>
+      </configuration>
+      <executions>
+        <execution>
+          <id>attach-sources</id>
+          <goals>
+            <goal>jar</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-javadoc-plugin</artifactId>
+      <version>3.2.0</version>
+      <configuration>
+        <show>public</show>
+        <attach>true</attach>
+        <detectJavaApiLink>false</detectJavaApiLink>
+      </configuration>
+      <executions>
+        <execution>
+          <goals>
+            <goal>jar</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+  </build>
 </project>

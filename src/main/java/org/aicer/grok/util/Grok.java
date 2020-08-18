@@ -15,17 +15,20 @@
  */
 package org.aicer.grok.util;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.aicer.grok.dictionary.GrokDictionary;
 
-import com.google.code.regexp.MatchResult;
-import com.google.code.regexp.Matcher;
-import com.google.code.regexp.Pattern;
-
 /**
  *
- * @author Israel Ekpo <israel@aicer.org>
+ * @author <a href="mailto:israel@aicer.org">Israel Ekpo</a>
  *
  */
 public final class Grok {
@@ -53,14 +56,38 @@ public final class Grok {
 
       MatchResult r = matcher.toMatchResult();
 
-      if (r != null && r.namedGroups() != null) {
-        return r.namedGroups();
+      try {
+        Map<String, Integer> namedGroups = getNamedGroups(compiledPattern);
+        Map<String, String> namedGroupValues = new HashMap<>();
+        for (String name : namedGroups.keySet()) {
+          namedGroupValues.put(name, r.group(namedGroups.get(name)));
+        }
+        return namedGroupValues;
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        return null;
       }
     }
 
     return null;
   }
 
+  private static Map<String, Integer> getNamedGroups(Pattern regex)
+          throws NoSuchMethodException, SecurityException,
+          IllegalAccessException, IllegalArgumentException,
+          InvocationTargetException {
+
+    Method namedGroupsMethod = Pattern.class.getDeclaredMethod("namedGroups");
+    namedGroupsMethod.setAccessible(true);
+
+    Map<String, Integer> namedGroups = (Map<String, Integer>) namedGroupsMethod.invoke(regex);
+
+    if (namedGroups == null) {
+      throw new InternalError();
+    }
+
+    return Collections.unmodifiableMap(namedGroups);
+  }
+  
   private static final void displayResults(final Map<String, String> results) {
     if (results != null) {
       for(Map.Entry<String, String> entry : results.entrySet()) {

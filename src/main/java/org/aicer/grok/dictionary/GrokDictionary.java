@@ -30,22 +30,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.aicer.grok.exception.GrokCompilationException;
 import org.aicer.grok.util.Grok;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.code.regexp.Pattern;
 import com.google.common.io.CharStreams;
-import com.google.common.io.Closeables;
 
 /**
  * Grok Dictionary
  *
- * @author Israel Ekpo <israel@aicer.org>
+ * @author <a href="mailto:israel@aicer.org">Israel Ekpo</a>
  */
 public final class GrokDictionary {
 
@@ -75,7 +75,6 @@ public final class GrokDictionary {
   /**
    * Digests all the dictionaries loaded so far
    *
-   * @param file
    * @throws GrokCompilationException if there is a problem
    */
   public void bind() {
@@ -107,6 +106,28 @@ public final class GrokDictionary {
     throwErrorIfDictionaryIsNotReady();
 
     final String digestedExpression = digestExpressionAux(expression);
+
+    logger.debug("Digested [" + expression + "] into [" + digestedExpression + "] before compilation");
+
+    return new Grok(Pattern.compile(digestedExpression));
+  }
+
+  /**
+   * Compiles the expression into a pattern
+   *
+   * This uses the internal dictionary of named regular expressions and passed custom patterns
+   *
+   * @param expression
+   * @param customPatterns
+   * @return The compiled expression
+   */
+  public Grok compileExpression(final String expression, final Reader customPatterns) throws IOException {
+    throwErrorIfDictionaryIsNotReady();
+
+    Map<String, String> customRegexDictionary = new HashMap<>();
+    addDictionaryAux(customPatterns, customRegexDictionary);
+
+    final String digestedExpression = digestExpressionAux(expression, customRegexDictionary);
 
     logger.debug("Digested [" + expression + "] into [" + digestedExpression + "] before compilation");
 
@@ -154,6 +175,16 @@ public final class GrokDictionary {
    * @param originalExpression
    */
   private String digestExpressionAux(String originalExpression) {
+    return digestExpressionAux(originalExpression, new HashMap<>());
+  }
+
+  /**
+   * Digests the original expression into a pure named regex using internal dictionary and provided custom dictionary.
+   *
+   * @param customRegexDictionary
+   * @param originalExpression
+   */
+  private String digestExpressionAux(String originalExpression, Map<String, String> customRegexDictionary) {
 
     final String PATTERN_START = "%{";
     final String PATTERN_STOP = "}";
@@ -183,8 +214,12 @@ public final class GrokDictionary {
         groupName = grokPattern.substring(PATTERN_DELIMITER_INDEX + 1, grokPattern.length());
       }
 
-      final String dictionaryValue = regexDictionary.get(regexName);
+      String dictionaryValue = regexDictionary.get(regexName);
 
+      if (dictionaryValue == null) {
+        dictionaryValue = customRegexDictionary.get(regexName);
+      }
+      
       if (dictionaryValue == null) {
         throw new GrokCompilationException("Missing value for regex name : " + regexName);
       }
@@ -212,7 +247,6 @@ public final class GrokDictionary {
    *
    * @param file The file or directory containing the dictionaries
    *
-   * @throws IOException
    */
   public void addDictionary(final File file) {
     try {
@@ -240,11 +274,6 @@ public final class GrokDictionary {
 
   public void addBuiltInDictionaries() {
     addBuiltInDictionary(BuiltInDictionary.GROK_BASE);
-    addBuiltInDictionary(BuiltInDictionary.GROK_JAVA);
-    addBuiltInDictionary(BuiltInDictionary.GROK_REDIS);
-    addBuiltInDictionary(BuiltInDictionary.GROK_SYSLOG);
-    addBuiltInDictionary(BuiltInDictionary.GROK_MONGODB);
-    addBuiltInDictionary(BuiltInDictionary.GROK_POSTGRESQL);
   }
 
   private void addBuiltInDictionary(BuiltInDictionary dictionaryName) {
@@ -287,13 +316,8 @@ public final class GrokDictionary {
       }
 
     } else {
-
-      Reader reader = new InputStreamReader(new FileInputStream(file), "UTF-8");
-
-      try {
+      try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
         addDictionaryAux(reader);
-      } finally {
-        Closeables.closeQuietly(reader);
       }
     }
 
@@ -305,17 +329,27 @@ public final class GrokDictionary {
    * @param reader
    */
   public void addDictionary(Reader reader) {
-
-    try {
-      addDictionaryAux(reader);
+    try (Reader r = reader) {
+      addDictionaryAux(r);
     } catch (IOException e) {
       throw new GrokCompilationException(e);
-    } finally {
-      Closeables.closeQuietly(reader);
     }
   }
 
+  /**
+   * Validate custom patterns read from the passed reader.
+   *
+   * @param reader
+   */
+  public void validateDictionary(Reader reader) throws IOException {
+    addDictionaryAux(reader, new HashMap<>());
+  }
+
   private void addDictionaryAux(Reader reader) throws IOException {
+    addDictionaryAux(reader, null);
+  }
+  
+  private void addDictionaryAux(Reader reader, Map<String, String> customRegexDictionary) throws IOException {
 
     for (String currentFileLine : CharStreams.readLines(reader)) {
 
@@ -342,7 +376,11 @@ public final class GrokDictionary {
         throw new GrokCompilationException("Dictionary entry must contain a value: " + currentLine);
       }
 
-      regexDictionary.put(dictionaryEntryName, dictionaryEntryValue);
+      if(customRegexDictionary != null) {
+        customRegexDictionary.put(dictionaryEntryName, dictionaryEntryValue);
+      } else {
+        regexDictionary.put(dictionaryEntryName, dictionaryEntryValue);
+      }
     }
   }
 

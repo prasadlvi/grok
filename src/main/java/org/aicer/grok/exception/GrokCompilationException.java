@@ -18,7 +18,7 @@ package org.aicer.grok.exception;
 /**
  * Represents a Compilation Error by the Grok Library
  *
- * @author Israel Ekpo <israel@aicer.org>
+ * @author <a href="mailto:israel@aicer.org">Israel Ekpo</a>
  */
 public class GrokCompilationException extends GrokException {
 
