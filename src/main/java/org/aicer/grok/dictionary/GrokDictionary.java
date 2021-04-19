@@ -126,7 +126,9 @@ public final class GrokDictionary {
 
     Map<String, String> customRegexDictionary = new HashMap<>();
     addDictionaryAux(customPatterns, customRegexDictionary);
-
+    
+    digestExpressions(customRegexDictionary);
+    
     final String digestedExpression = digestExpressionAux(expression, customRegexDictionary);
 
     logger.debug("Digested [" + expression + "] into [" + digestedExpression + "] before compilation");
@@ -135,18 +137,30 @@ public final class GrokDictionary {
   }
 
   private void digestExpressions() {
+    digestExpressions(null);
+  }
+  
+  private void digestExpressions(Map<String, String> customRegexDictionary) {
 
     boolean wasModified = true;
+
+    Map<String, String> dictionaryToDigest = regexDictionary;
+    
+    if (customRegexDictionary != null) {
+      dictionaryToDigest = customRegexDictionary;
+    } else {
+      customRegexDictionary = new HashMap<>();
+    }
 
     while (wasModified) {
 
       wasModified = false;
 
-      for(Map.Entry<String, String> entry: regexDictionary.entrySet()) {
+      for(Map.Entry<String, String> entry: dictionaryToDigest.entrySet()) {
 
         String originalExpression = entry.getValue();
-        String digestedExpression = digestExpressionAux(originalExpression);
-        wasModified = (originalExpression != digestedExpression);
+        String digestedExpression = digestExpressionAux(originalExpression, customRegexDictionary);
+        wasModified = (!originalExpression.equals(digestedExpression));
 
         if (wasModified) {
           entry.setValue(digestedExpression);
@@ -290,7 +304,7 @@ public final class GrokDictionary {
       return;
     }
 
-    logger.info("Loading Built-In dictionary: " + filePath);
+    logger.debug("Loading Built-In dictionary: " + filePath);
 
     addDictionary(istream);
 
